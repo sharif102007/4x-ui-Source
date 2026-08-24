@@ -1,0 +1,35 @@
+# Build output
+/x-ui
+/x-ui.exe
+/build/
+/dist/
+*.zip
+*.tar.gz
+
+# Xray runtime files fetched at build/install time
+/bin/
+/web/assets/*.tmp
+
+# Local runtime state — must never reach the repo
+*.db
+*.db-journal
+/log/
+/access.log
+/error.log
+
+# Environment / secrets
+.env
+.env.local
+
+# Go
+vendor/
+*.test
+*.out
+coverage.txt
+
+# Editors / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
