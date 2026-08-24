@@ -1,0 +1,537 @@
+{{ template "page/head_start" .}}
+<style>
+  .ssh-page-content { padding: 12px 16px 28px; }
+  .ssh-shell { max-width: 1180px; margin: 0 auto; }
+  .ssh-card.ant-card { border-radius: 18px; overflow: hidden; }
+  .ssh-card .ant-card-body { padding: 18px; }
+  .ssh-tabs .ant-tabs-bar { display: none !important; }
+  .ssh-nav-actions {
+    width: 100%;
+    max-width: 700px;
+    margin: 0 auto 22px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .ssh-nav-actions .ant-btn {
+    width: 100%;
+    min-width: 0;
+    height: 46px;
+    font-size: 16px;
+    font-weight: 500;
+  }
+  .ssh-section-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .ssh-section-title { font-size: 22px; font-weight: 600; line-height: 1.2; }
+  .ssh-section-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+  .ssh-desktop-table .ant-table { border-radius: 14px; overflow: hidden; }
+  .ssh-mobile-cards { display: none; }
+  .ssh-empty { text-align: center; padding: 28px 12px; opacity: .7; border: 1px dashed rgba(140,140,140,.35); border-radius: 14px; }
+  .ssh-item-card { border: 1px solid rgba(140,140,140,.22); border-radius: 16px; padding: 14px; margin-bottom: 12px; background: rgba(127,127,127,.04); }
+  .ssh-item-top { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; margin-bottom: 10px; }
+  .ssh-item-title { font-size: 17px; font-weight: 600; word-break: break-word; }
+  .ssh-row { display: grid; grid-template-columns: 92px 1fr; gap: 8px; margin: 7px 0; align-items: start; }
+  .ssh-label { opacity: .62; }
+  .ssh-value { word-break: break-word; }
+  .ssh-config-list { display: flex; flex-direction: column; gap: 8px; }
+  .ssh-actions-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; margin-top: 12px; }
+  .ssh-actions-grid .ant-btn { width: 100%; }
+  .ssh-config-input.ant-input-group-wrapper { max-width: 440px; }
+  .ssh-modal-alert { margin-bottom: 12px; border-radius: 12px; }
+  @media (max-width: 768px) {
+    .ssh-page-content { padding: 10px 10px 22px; }
+    .ssh-card .ant-card-body { padding: 12px; }
+    .ssh-nav-actions { max-width: none; gap: 8px; margin-bottom: 20px; }
+    .ssh-nav-actions .ant-btn { height: 44px; font-size: 15px; }
+    .ssh-section-head { align-items: stretch; flex-direction: column; }
+    .ssh-section-title { font-size: 19px; }
+    .ssh-section-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; justify-content: stretch; }
+    .ssh-section-actions .ant-btn { width: 100%; }
+    .ssh-desktop-table { display: none; }
+    .ssh-mobile-cards { display: block; }
+    .ssh-row { grid-template-columns: 82px 1fr; }
+    .ssh-config-input.ant-input-group-wrapper { width: 100% !important; max-width: 100%; }
+    .ant-modal { max-width: calc(100vw - 20px); margin: 10px auto; }
+    .ant-modal-body { padding: 14px; }
+    .ant-form-item-label, .ant-form-item-control-wrapper { display: block !important; width: 100% !important; }
+    .ant-form-item-label { text-align: left !important; line-height: 1.4 !important; padding-bottom: 4px !important; }
+  }
+</style>
+{{ template "page/head_end" .}}
+
+{{ template "page/body_start" .}}
+<a-layout id="app" v-cloak :class="themeSwitcher.currentTheme + ' index-page'">
+  <a-sidebar></a-sidebar>
+  <a-layout id="content-layout">
+    <a-layout-content class="ssh-page-content">
+      <div class="ssh-shell">
+
+        <a-card class="ssh-card" :bordered="false">
+          <div class="ssh-nav-actions">
+            <a-button :type="activeTab === 'inbounds' ? 'primary' : 'default'" @click="activeTab = 'inbounds'">Inbound</a-button>
+            <a-button :type="activeTab === 'users' ? 'primary' : 'default'" @click="activeTab = 'users'">Client</a-button>
+          </div>
+          <a-tabs v-model="activeTab" class="ssh-tabs">
+
+            <!-- SSH INBOUNDS TAB -->
+            <a-tab-pane key="inbounds" tab="Inbound">
+              <div class="ssh-section-head">
+                <div class="ssh-section-title">Inbound</div>
+                <div class="ssh-section-actions">
+                  <a-button type="primary" icon="plus" @click="openInboundModal()">Create Inbound</a-button>
+                  <a-button icon="reload" @click="refreshAll">Refresh</a-button>
+                </div>
+              </div>
+
+              <a-table class="ssh-desktop-table" :columns="inboundColumns"
+                :data-source="inbounds" row-key="id" :scroll="{x: 980}" :pagination="{pageSize: 10}">
+                <template slot="mode" slot-scope="text">
+                  <a-tag :color="modeColor(text)">[[ modeLabel(text) ]]</a-tag>
+                </template>
+                <template slot="status" slot-scope="_, rec">
+                  <a-tag :color="rec.enable ? 'green' : 'red'">[[ rec.enable ? 'active' : 'disabled' ]]</a-tag>
+                </template>
+                <template slot="banner" slot-scope="_, rec">
+                  <a-tag :color="rec.banner ? 'purple' : ''">[[ rec.banner ? 'On' : 'Off' ]]</a-tag>
+                </template>
+                <template slot="createdAt" slot-scope="text">[[ fmtMs(text) ]]</template>
+                <template slot="actions" slot-scope="_, rec">
+                  <a-space>
+                    <a-button size="small" icon="edit" @click="openInboundModal(rec)">Edit</a-button>
+                    <a-button size="small" v-if="!rec.enable" @click="toggleInbound(rec, true)">Enable</a-button>
+                    <a-button size="small" v-else @click="toggleInbound(rec, false)">Disable</a-button>
+                    <a-popconfirm title="Delete this SSH inbound? Users will not be deleted." @confirm="deleteInbound(rec)">
+                      <a-button size="small" type="danger" icon="delete">Delete</a-button>
+                    </a-popconfirm>
+                  </a-space>
+                </template>
+              </a-table>
+
+              <div class="ssh-mobile-cards">
+                <div v-if="!inbounds.length" class="ssh-empty">No SSH inbound found.</div>
+                <div v-for="rec in inbounds" :key="rec.id" class="ssh-item-card">
+                  <div class="ssh-item-top">
+                    <div class="ssh-item-title">[[ rec.name || 'SSH Inbound' ]]</div>
+                    <a-tag :color="rec.enable ? 'green' : 'red'">[[ rec.enable ? 'active' : 'disabled' ]]</a-tag>
+                  </div>
+                  <div class="ssh-row"><div class="ssh-label">Mode</div><div class="ssh-value"><a-tag :color="modeColor(rec.mode)">[[ modeLabel(rec.mode) ]]</a-tag></div></div>
+                  <div class="ssh-row"><div class="ssh-label">Host</div><div class="ssh-value">[[ rec.host || '-' ]]</div></div>
+                  <div class="ssh-row"><div class="ssh-label">Port</div><div class="ssh-value">[[ rec.listenPort || '-' ]]</div></div>
+                  <div class="ssh-row"><div class="ssh-label">Backend</div><div class="ssh-value">[[ rec.backendSshPort || '-' ]]</div></div>
+                  <div class="ssh-row"><div class="ssh-label">Message</div><div class="ssh-value">[[ rec.banner ? 'Enabled' : 'Off' ]]</div></div>
+                  <div class="ssh-row"><div class="ssh-label">Traffic</div><div class="ssh-value"><a-tag color="purple">[[ fmtBytes(rec.trafficUsed) ]] / [[ rec.trafficLimit ? fmtBytes(rec.trafficLimit) : 'Unlimited' ]]</a-tag></div></div>
+                  <div class="ssh-row"><div class="ssh-label">Speed</div><div class="ssh-value">[[ rec.speedLimit ? ('↓ ' + rec.downloadMbps + ' / ↑ ' + rec.uploadMbps + ' Mbps') : 'Unlimited' ]]</div></div>
+                  <div class="ssh-row"><div class="ssh-label">Note</div><div class="ssh-value">[[ rec.note || '-' ]]</div></div>
+                  <div class="ssh-actions-grid">
+                    <a-button icon="edit" @click="openInboundModal(rec)">Edit</a-button>
+                    <a-button v-if="!rec.enable" @click="toggleInbound(rec, true)">Enable</a-button>
+                    <a-button v-else @click="toggleInbound(rec, false)">Disable</a-button>
+                    <a-popconfirm title="Delete this SSH inbound?" @confirm="deleteInbound(rec)">
+                      <a-button type="danger" icon="delete">Delete</a-button>
+                    </a-popconfirm>
+                  </div>
+                </div>
+              </div>
+            </a-tab-pane>
+
+            <!-- SSH USERS TAB -->
+            <a-tab-pane key="users" tab="Client">
+              <div class="ssh-section-head">
+                <div class="ssh-section-title">Client</div>
+                <div class="ssh-section-actions">
+                  <a-button type="primary" icon="user-add" @click="openUserModal()">Create User</a-button>
+                  <a-button icon="reload" @click="refreshAll">Refresh</a-button>
+                </div>
+              </div>
+
+              <a-table class="ssh-desktop-table" :columns="userColumns"
+                :data-source="users" row-key="id" :scroll="{x: 1100}" :pagination="{pageSize: 10}">
+                <template slot="status" slot-scope="_, rec">
+                  <a-tag :color="rec.enable ? 'green' : 'red'">[[ rec.enable ? 'active' : 'disabled' ]]</a-tag>
+                </template>
+                <template slot="expiry" slot-scope="_, rec">
+                  [[ rec.expiryTime ? fmtMs(rec.expiryTime) : 'Never' ]]
+                </template>
+                <template slot="traffic" slot-scope="_, rec">
+                  <a-tag color="purple">[[ fmtBytes(rec.trafficUsed) ]] / [[ rec.trafficLimit ? fmtBytes(rec.trafficLimit) : 'Unlimited' ]]</a-tag>
+                </template>
+                <template slot="speed" slot-scope="_, rec">
+                  [[ rec.speedLimit ? ('↓ ' + rec.downloadMbps + ' / ↑ ' + rec.uploadMbps + ' Mbps') : 'Unlimited' ]]
+                </template>
+                <template slot="configs" slot-scope="_, rec">
+                  <div class="ssh-config-list">
+                    <div v-for="cfg in buildConfigs(rec)" :key="cfg.label">
+                      <a-input class="ssh-config-input" :value="cfg.full" readonly>
+                        <a-button slot="addonAfter" icon="copy" @click="copyText(cfg.full)"></a-button>
+                      </a-input>
+                    </div>
+                    <span v-if="!buildConfigs(rec).length" style="opacity:.5">No active inbound</span>
+                  </div>
+                </template>
+                <template slot="createdAt" slot-scope="text">[[ fmtMs(text) ]]</template>
+                <template slot="actions" slot-scope="_, rec">
+                  <a-space>
+                    <a-button size="small" icon="edit" @click="openUserModal(rec)">Edit</a-button>
+                    <a-button size="small" v-if="!rec.enable" @click="toggleUser(rec, true)">Enable</a-button>
+                    <a-button size="small" v-else @click="toggleUser(rec, false)">Disable</a-button>
+                    <a-popconfirm title="Delete this Linux SSH user?" @confirm="deleteUser(rec)">
+                      <a-button size="small" type="danger" icon="delete">Delete</a-button>
+                    </a-popconfirm>
+                  </a-space>
+                </template>
+              </a-table>
+
+              <div class="ssh-mobile-cards">
+                <div v-if="!users.length" class="ssh-empty">No SSH user found.</div>
+                <div v-for="rec in users" :key="rec.id" class="ssh-item-card">
+                  <div class="ssh-item-top">
+                    <div class="ssh-item-title">[[ rec.username ]]</div>
+                    <a-tag :color="rec.enable ? 'green' : 'red'">[[ rec.enable ? 'active' : 'disabled' ]]</a-tag>
+                  </div>
+                  <div class="ssh-row"><div class="ssh-label">Expiry</div><div class="ssh-value">[[ rec.expiryTime ? fmtMs(rec.expiryTime) : 'Never' ]]</div></div>
+                  <div class="ssh-row"><div class="ssh-label">Traffic</div><div class="ssh-value"><a-tag color="purple">[[ fmtBytes(rec.trafficUsed) ]] / [[ rec.trafficLimit ? fmtBytes(rec.trafficLimit) : 'Unlimited' ]]</a-tag></div></div>
+                  <div class="ssh-row"><div class="ssh-label">Speed</div><div class="ssh-value">[[ rec.speedLimit ? ('↓ ' + rec.downloadMbps + ' / ↑ ' + rec.uploadMbps + ' Mbps') : 'Unlimited' ]]</div></div>
+                  <div class="ssh-row"><div class="ssh-label">Note</div><div class="ssh-value">[[ rec.note || '-' ]]</div></div>
+                  <div class="ssh-row">
+                    <div class="ssh-label">Configs</div>
+                    <div class="ssh-value ssh-config-list">
+                      <div v-for="cfg in buildConfigs(rec)" :key="cfg.label">
+                        <a-input class="ssh-config-input" :value="cfg.full" readonly>
+                          <a-button slot="addonAfter" icon="copy" @click="copyText(cfg.full)"></a-button>
+                        </a-input>
+                      </div>
+                      <span v-if="!buildConfigs(rec).length" style="opacity:.5">No active inbound</span>
+                    </div>
+                  </div>
+                  <div class="ssh-actions-grid">
+                    <a-button icon="edit" @click="openUserModal(rec)">Edit</a-button>
+                    <a-button v-if="!rec.enable" @click="toggleUser(rec, true)">Enable</a-button>
+                    <a-button v-else @click="toggleUser(rec, false)">Disable</a-button>
+                    <a-popconfirm title="Delete this Linux SSH user?" @confirm="deleteUser(rec)">
+                      <a-button type="danger" icon="delete">Delete</a-button>
+                    </a-popconfirm>
+                  </div>
+                </div>
+              </div>
+            </a-tab-pane>
+
+          </a-tabs>
+        </a-card>
+      </div>
+    </a-layout-content>
+  </a-layout>
+
+  <!-- INBOUND MODAL -->
+  <a-modal v-model="inboundModal.visible"
+    :title="inboundModal.editing ? 'Edit SSH Inbound' : 'Create SSH Inbound'"
+    @ok="saveInbound" :confirm-loading="inboundModal.loading"
+    :class="themeSwitcher.currentTheme" width="720px">
+    <a-form :colon="false" :label-col="{span: 8}" :wrapper-col="{span: 16}">
+      <a-form-item label="Name">
+        <a-input v-model.trim="inboundForm.name" placeholder="My SSH endpoint"></a-input>
+      </a-form-item>
+      <a-form-item label="Mode">
+        <a-select v-model="inboundForm.mode" :dropdown-class-name="themeSwitcher.currentTheme">
+          <a-select-option value="normal_ssh">Normal SSH (direct)</a-select-option>
+          <a-select-option value="ssh_payload_only">Payload Only — no TLS (DarkTunnel, HTTP Injector)</a-select-option>
+          <a-select-option value="ssh_tls_sni">SSH + TLS/SNI (blank payload)</a-select-option>
+          <a-select-option value="ssh_tls_payload">SSH + TLS/SNI + Payload</a-select-option>
+        </a-select>
+      </a-form-item>
+      <a-form-item label="Host / Domain">
+        <a-input v-model.trim="inboundForm.host" placeholder="example.com or server IP"></a-input>
+      </a-form-item>
+      <a-form-item :label="inboundForm.mode === 'normal_ssh' ? 'Listen Port (SSH)' : 'Listen Port (TLS)'">
+        <a-input-number v-model="inboundForm.listenPort" :min="1" :max="65535" style="width:100%"></a-input-number>
+      </a-form-item>
+      <a-form-item label="Backend SSH Port" v-if="inboundForm.mode !== 'normal_ssh'">
+        <a-input-number v-model="inboundForm.backendSshPort" :min="1" :max="65535" style="width:100%"></a-input-number>
+      </a-form-item>
+      <a-form-item label="Certificate" v-if="inboundForm.mode !== 'normal_ssh'">
+        <a-select v-model="inboundForm.certMode" :dropdown-class-name="themeSwitcher.currentTheme">
+          <a-select-option value="self_signed">Self-signed (auto)</a-select-option>
+          <a-select-option value="existing">Existing path</a-select-option>
+        </a-select>
+      </a-form-item>
+      <template v-if="inboundForm.mode !== 'normal_ssh' && inboundForm.certMode === 'existing'">
+        <a-form-item label="Cert file">
+          <a-input v-model.trim="inboundForm.certFile" placeholder="/etc/letsencrypt/live/example.com/fullchain.pem"></a-input>
+        </a-form-item>
+        <a-form-item label="Key file">
+          <a-input v-model.trim="inboundForm.keyFile" placeholder="/etc/letsencrypt/live/example.com/privkey.pem"></a-input>
+        </a-form-item>
+      </template>
+      <a-form-item label="Status">
+        <a-select v-model="inboundForm.enable" :dropdown-class-name="themeSwitcher.currentTheme">
+          <a-select-option :value="true">Active</a-select-option>
+          <a-select-option :value="false">Disabled</a-select-option>
+        </a-select>
+      </a-form-item>
+      <a-form-item label="Server Message">
+        <a-switch v-model="inboundForm.bannerEnabled"></a-switch>
+      </a-form-item>
+      <a-form-item label="Message Text" v-if="inboundForm.bannerEnabled">
+        <a-textarea v-model="inboundForm.banner" :rows="3" :maxLength="1000"
+          placeholder="Shown by OpenSSH Banner before login"></a-textarea>
+      </a-form-item>
+      <a-form-item label="Note">
+        <a-input v-model.trim="inboundForm.note"></a-input>
+      </a-form-item>
+      <a-form-item label="UDP Relay (badvpn-udpgw)">
+        <a-switch v-model="inboundForm.udpRelayEnabled"></a-switch>
+        <span style="margin-left:8px;opacity:.65;font-size:12px">UDP support for DarkTunnel / HTTP Custom · VPS setup is automatic</span>
+      </a-form-item>
+      <a-form-item label="UDP Relay Port" v-if="inboundForm.udpRelayEnabled">
+        <a-input-number v-model="inboundForm.udpRelayPort" :min="1" :max="65535" style="width:100%"></a-input-number>
+        <div style="opacity:.6;font-size:12px;margin-top:4px">Use 127.0.0.1:[[ inboundForm.udpRelayPort ]] as UDPGW through the SSH tunnel (default: 7300). 4x-ui auto-installs and manages the VPS relay service.</div>
+      </a-form-item>
+    </a-form>
+  </a-modal>
+
+  <!-- USER MODAL -->
+  <a-modal v-model="userModal.visible"
+    :title="userModal.editing ? 'Edit SSH User' : 'Create SSH User'"
+    @ok="saveUser" :confirm-loading="userModal.loading"
+    :class="themeSwitcher.currentTheme" width="640px">
+    <a-alert class="ssh-modal-alert" type="info" show-icon
+      message="Password is shown to panel admins for config copy. Stored encrypted in database.">
+    </a-alert>
+    <a-form :colon="false" :label-col="{span: 8}" :wrapper-col="{span: 16}">
+      <a-form-item label="Enabled">
+        <a-switch v-model="userForm.enable"></a-switch>
+      </a-form-item>
+      <a-form-item label="Username">
+        <a-input v-model.trim="userForm.username" :disabled="userModal.editing"
+          placeholder="sshuser1  (A-Z a-z 0-9 _ -)"></a-input>
+      </a-form-item>
+      <a-form-item label="Password">
+        <a-input-group compact>
+          <a-input-password v-model="userForm.password" style="width:70%"
+            :placeholder="userModal.editing ? 'Leave empty to keep' : 'Required'"></a-input-password>
+          <a-button style="width:30%" @click="genPassword">Generate</a-button>
+        </a-input-group>
+      </a-form-item>
+      <a-form-item label="Expiry Date">
+        <a-date-picker v-model="userForm.expiryMoment" value-format="YYYY-MM-DD"
+          style="width:100%" placeholder="Never"></a-date-picker>
+      </a-form-item>
+      <a-form-item label="Total Flow">
+        <a-input-number v-model="userForm.totalFlowGB" :min="0" :precision="2" style="width:100%">
+          <span slot="addonAfter">GB</span>
+        </a-input-number>
+      </a-form-item>
+      <a-form-item label="Usage" v-if="userModal.editing">
+        <a-space>
+          <a-tag color="purple">[[ fmtBytes(userForm.trafficUsed) ]] / [[ userForm.totalFlowGB ? userForm.totalFlowGB + ' GB' : 'Unlimited' ]]</a-tag>
+          <a-button size="small" icon="reload" @click="resetTraffic">Reset</a-button>
+        </a-space>
+      </a-form-item>
+      <a-form-item label="Reset Flow">
+        <a-select v-model="userForm.resetFlow" :dropdown-class-name="themeSwitcher.currentTheme">
+          <a-select-option value="never">Never</a-select-option>
+          <a-select-option value="daily">Daily</a-select-option>
+          <a-select-option value="weekly">Weekly</a-select-option>
+          <a-select-option value="monthly">Monthly</a-select-option>
+        </a-select>
+      </a-form-item>
+      <a-form-item label="Enable Speed Limit">
+        <a-switch v-model="userForm.speedLimit"></a-switch>
+      </a-form-item>
+      <a-row :gutter="10" v-if="userForm.speedLimit">
+        <a-col :span="12">
+          <a-form-item label="Download Speed" :label-col="{span:24}" :wrapper-col="{span:24}">
+            <a-input-number v-model="userForm.downloadMbps" :min="0" style="width:100%"></a-input-number>
+          </a-form-item>
+        </a-col>
+        <a-col :span="12">
+          <a-form-item label="Upload Speed" :label-col="{span:24}" :wrapper-col="{span:24}">
+            <a-input-number v-model="userForm.uploadMbps" :min="0" style="width:100%"></a-input-number>
+          </a-form-item>
+        </a-col>
+      </a-row>
+      <a-form-item label="Note">
+        <a-input v-model.trim="userForm.note"></a-input>
+      </a-form-item>
+    </a-form>
+  </a-modal>
+
+</a-layout>
+
+{{template "page/body_scripts" .}}
+{{template "component/aThemeSwitch" .}}
+{{template "component/aSidebar" .}}
+<script>
+new Vue({
+  delimiters: ['[[', ']]'],
+  el: '#app',
+  data: {
+    themeSwitcher,
+    activeTab: 'inbounds',
+    inbounds: [],
+    users: [],
+    inboundModal: { visible: false, editing: false, loading: false },
+    userModal:    { visible: false, editing: false, loading: false },
+    inboundForm:  {},
+    userForm:     {},
+    inboundColumns: [
+      { title: 'Name',    dataIndex: 'name' },
+      { title: 'Mode',    dataIndex: 'mode',         scopedSlots: { customRender: 'mode' } },
+      { title: 'Host',    dataIndex: 'host' },
+      { title: 'Port',    dataIndex: 'listenPort' },
+      { title: 'Backend', dataIndex: 'backendSshPort' },
+      { title: 'Message', key: 'banner',              scopedSlots: { customRender: 'banner' } },
+      { title: 'Status',  key: 'status',              scopedSlots: { customRender: 'status' } },
+      { title: 'Created', dataIndex: 'createdAt',     scopedSlots: { customRender: 'createdAt' } },
+      { title: 'Actions', key: 'actions',             scopedSlots: { customRender: 'actions' } },
+    ],
+    userColumns: [
+      { title: 'Username', dataIndex: 'username' },
+      { title: 'Status',   key: 'status',    scopedSlots: { customRender: 'status' } },
+      { title: 'Expiry',   key: 'expiry',    scopedSlots: { customRender: 'expiry' } },
+      { title: 'Traffic',  key: 'traffic',   scopedSlots: { customRender: 'traffic' } },
+      { title: 'Speed',    key: 'speed',     scopedSlots: { customRender: 'speed' } },
+      { title: 'Note',     dataIndex: 'note' },
+      { title: 'Configs',  key: 'configs',   scopedSlots: { customRender: 'configs' } },
+      { title: 'Created',  dataIndex: 'createdAt', scopedSlots: { customRender: 'createdAt' } },
+      { title: 'Actions',  key: 'actions',   scopedSlots: { customRender: 'actions' } },
+    ],
+  },
+  async mounted() {
+    await this.refreshAll();
+  },
+  methods: {
+    async refreshAll() {
+      await Promise.all([this.loadInbounds(), this.loadUsers()]);
+    },
+    async loadInbounds() {
+      const msg = await HttpUtil.get('/panel/api/ssh/inbounds');
+      if (msg.success) this.inbounds = msg.obj || [];
+    },
+    async loadUsers() {
+      const msg = await HttpUtil.get('/panel/api/ssh/users');
+      if (msg.success) this.users = msg.obj || [];
+    },
+    modeLabel(m) {
+      return { normal_ssh: 'Normal', ssh_payload_only: 'Payload Only', ssh_tls_sni: 'TLS/SNI', ssh_tls_payload: 'TLS+Payload' }[m] || m;
+    },
+    modeColor(m) {
+      return { normal_ssh: 'blue', ssh_payload_only: 'orange', ssh_tls_sni: 'green', ssh_tls_payload: 'purple' }[m] || 'default';
+    },
+    fmtMs(ms) {
+      if (!ms) return '-';
+      return moment(ms).format('YYYY-MM-DD HH:mm');
+    },
+    fmtBytes(bytes) {
+      bytes = Number(bytes || 0);
+      if (bytes < 1024) return bytes + ' B';
+      const units = ['KB','MB','GB','TB'];
+      let value = bytes / 1024, i = 0;
+      while (value >= 1024 && i < units.length - 1) { value /= 1024; i++; }
+      return value.toFixed(value >= 100 ? 0 : 2) + ' ' + units[i];
+    },
+    buildConfigs(user) {
+      if (!user.password) return [];
+      return this.inbounds
+        .filter(ib => ib.enable)
+        .map(ib => ({
+          label: ib.name,
+          full:  ib.host + ':' + ib.listenPort + '@' + user.username + ':' + user.password,
+        }));
+    },
+    copyText(text) {
+      ClipboardManager.copyText(text)
+        .then(ok => this.$message[ok ? 'success' : 'error'](ok ? 'Copied' : 'Copy failed'));
+    },
+    openInboundModal(rec) {
+      this.inboundModal.editing = !!rec;
+      const blank = {
+        name: '', mode: 'normal_ssh', host: location.hostname,
+        listenPort: 2222, backendSshPort: 2222, certMode: 'self_signed',
+        certFile: '', keyFile: '', bannerEnabled: false, banner: '', note: '', enable: true,
+        udpRelayEnabled: false, udpRelayPort: 7300,
+      };
+      if (rec) {
+        this.inboundForm = Object.assign({}, blank, JSON.parse(JSON.stringify(rec)));
+        this.inboundForm.bannerEnabled = !!rec.banner;
+        this.inboundForm.udpRelayEnabled = (rec.udpRelayPort > 0);
+        this.inboundForm.udpRelayPort = rec.udpRelayPort > 0 ? rec.udpRelayPort : 7300;
+      } else {
+        this.inboundForm = blank;
+      }
+      this.inboundModal.visible = true;
+    },
+    async saveInbound() {
+      this.inboundModal.loading = true;
+      if (!this.inboundForm.bannerEnabled) this.inboundForm.banner = '';
+      if (!this.inboundForm.udpRelayEnabled) this.inboundForm.udpRelayPort = 0;
+      const url = this.inboundModal.editing
+        ? '/panel/api/ssh/inbounds/update/' + this.inboundForm.id
+        : '/panel/api/ssh/inbounds/add';
+      const msg = await HttpUtil.post(url, this.inboundForm);
+      this.inboundModal.loading = false;
+      if (msg.success) { this.inboundModal.visible = false; await this.refreshAll(); }
+    },
+    async toggleInbound(rec, enable) {
+      const msg = await HttpUtil.post('/panel/api/ssh/inbounds/' + (enable ? 'enable' : 'disable') + '/' + rec.id);
+      if (msg.success) await this.refreshAll();
+    },
+    async deleteInbound(rec) {
+      const msg = await HttpUtil.post('/panel/api/ssh/inbounds/del/' + rec.id);
+      if (msg.success) await this.refreshAll();
+    },
+    openUserModal(rec) {
+      this.userModal.editing = !!rec;
+      if (rec) {
+        this.userForm = {
+          id: rec.id, username: rec.username, password: '', enable: !!rec.enable,
+          expiryMoment: rec.expiryTime ? moment(rec.expiryTime).format('YYYY-MM-DD') : '',
+          note: rec.note || '', trafficUsed: rec.trafficUsed || 0,
+          totalFlowGB: rec.trafficLimit ? +(rec.trafficLimit / 1073741824).toFixed(2) : 0,
+          resetFlow: rec.resetFlow || 'never', speedLimit: !!rec.speedLimit,
+          downloadMbps: rec.downloadMbps || 0, uploadMbps: rec.uploadMbps || 0,
+        };
+      } else {
+        this.userForm = { username: '', password: RandomUtil.randomSeq(14), enable: true, expiryMoment: '', note: '', trafficUsed: 0, totalFlowGB: 0, resetFlow: 'never', speedLimit: false, downloadMbps: 0, uploadMbps: 0 };
+      }
+      this.userModal.visible = true;
+    },
+    genPassword() {
+      this.userForm.password = RandomUtil.randomSeq(14);
+    },
+    async saveUser() {
+      this.userModal.loading = true;
+      const data = {
+        username:   this.userForm.username,
+        enable:     !!this.userForm.enable,
+        password:   this.userForm.password,
+        expiryTime: this.userForm.expiryMoment ? moment(this.userForm.expiryMoment, 'YYYY-MM-DD').valueOf() : 0,
+        note:       this.userForm.note || '',
+        trafficLimit: Math.round(Number(this.userForm.totalFlowGB || 0) * 1073741824),
+        resetFlow: this.userForm.resetFlow || 'never',
+        speedLimit: !!this.userForm.speedLimit,
+        downloadMbps: Number(this.userForm.downloadMbps || 0),
+        uploadMbps: Number(this.userForm.uploadMbps || 0),
+      };
+      const url = this.userModal.editing
+        ? '/panel/api/ssh/users/update/' + this.userForm.id
+        : '/panel/api/ssh/users/add';
+      const msg = await HttpUtil.post(url, data);
+      this.userModal.loading = false;
+      if (msg.success) { this.userModal.visible = false; await this.refreshAll(); }
+    },
+    async resetTraffic() {
+      if (!this.userModal.editing || !this.userForm.id) return;
+      const msg = await HttpUtil.post('/panel/api/ssh/users/resetTraffic/' + this.userForm.id);
+      if (msg.success) { this.userForm.trafficUsed = 0; await this.loadUsers(); }
+    },
+    async toggleUser(rec, enable) {
+      const msg = await HttpUtil.post('/panel/api/ssh/users/' + (enable ? 'enable' : 'disable') + '/' + rec.id);
+      if (msg.success) await this.refreshAll();
+    },
+    async deleteUser(rec) {
+      const msg = await HttpUtil.post('/panel/api/ssh/users/del/' + rec.id);
+      if (msg.success) await this.refreshAll();
+    },
+  },
+});
+</script>
+{{ template "page/body_end" .}}

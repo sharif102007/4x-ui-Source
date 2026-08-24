@@ -1,0 +1,181 @@
+{{ template "page/head_start" .}}
+<style>
+  :root {
+    color-scheme: dark;
+  }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: #0d1117;
+    color: rgba(255,255,255,.92);
+  }
+  .license-shell {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 14px;
+    box-sizing: border-box;
+  }
+  .license-card {
+    width: 100%;
+    max-width: 520px;
+    border: 1px solid rgba(255,255,255,.10);
+    border-radius: 22px;
+    background: #11161d;
+    box-shadow: 0 24px 70px rgba(0,0,0,.34);
+    overflow: hidden;
+  }
+  .license-head {
+    padding: 26px 24px 18px;
+    border-bottom: 1px solid rgba(255,255,255,.08);
+  }
+  .license-brand {
+    font-size: 25px;
+    font-weight: 750;
+    letter-spacing: .2px;
+  }
+  .license-subtitle {
+    margin-top: 7px;
+    color: rgba(255,255,255,.58);
+    line-height: 1.55;
+  }
+  .license-body { padding: 22px 24px 26px; }
+  .license-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 12px;
+    border-radius: 999px;
+    font-weight: 650;
+    margin-bottom: 18px;
+    border: 1px solid rgba(255,255,255,.10);
+  }
+  .license-status.active { color: #67e8d2; border-color: rgba(15,185,160,.45); background: rgba(15,185,160,.10); }
+  .license-status.inactive { color: #f4b4b4; border-color: rgba(239,68,68,.38); background: rgba(239,68,68,.08); }
+  .license-error {
+    margin: 0 0 16px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 1px solid rgba(239,68,68,.35);
+    background: rgba(239,68,68,.08);
+    color: #ffc0c0;
+    line-height: 1.45;
+  }
+  .license-info {
+    display: grid;
+    grid-template-columns: 135px minmax(0,1fr);
+    gap: 10px 12px;
+    margin: 0 0 20px;
+    padding: 16px;
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 15px;
+    background: rgba(255,255,255,.025);
+  }
+  .license-label { color: rgba(255,255,255,.52); }
+  .license-value { word-break: break-word; }
+  .license-input {
+    width: 100%;
+    height: 48px;
+    box-sizing: border-box;
+    border-radius: 13px;
+    border: 1px solid rgba(255,255,255,.16);
+    background: #0d1117;
+    color: #fff;
+    padding: 0 14px;
+    outline: none;
+    font-size: 15px;
+    letter-spacing: .3px;
+  }
+  .license-input:focus { border-color: #0ba892; box-shadow: 0 0 0 3px rgba(11,168,146,.12); }
+  .license-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0,1fr));
+    gap: 10px;
+    margin-top: 12px;
+  }
+  .license-actions.single { grid-template-columns: 1fr; }
+  .license-btn {
+    min-height: 46px;
+    border-radius: 999px;
+    border: 1px solid #0aa38f;
+    background: rgba(7,45,43,.75);
+    color: #fff;
+    font-size: 15px;
+    font-weight: 650;
+    cursor: pointer;
+    padding: 0 18px;
+  }
+  .license-btn.primary { background: linear-gradient(180deg,#10b7a4,#079987); border-color: transparent; }
+  .license-note {
+    margin-top: 17px;
+    color: rgba(255,255,255,.45);
+    font-size: 12.5px;
+    line-height: 1.55;
+    text-align: center;
+  }
+  @media (max-width: 520px) {
+    .license-head, .license-body { padding-left: 18px; padding-right: 18px; }
+    .license-info { grid-template-columns: 105px minmax(0,1fr); font-size: 14px; }
+    .license-actions { grid-template-columns: 1fr; }
+  }
+</style>
+{{ template "page/head_end" .}}
+{{ template "page/body_start" .}}
+<div class="license-shell">
+  <div class="license-card">
+    <div class="license-head">
+      <div class="license-brand">4x-ui License</div>
+      <div class="license-subtitle">Activate this VPS with a valid paid license to use 4x-ui.</div>
+    </div>
+    <div class="license-body">
+      {{ if .license.Active }}
+        <div class="license-status active">● Active</div>
+      {{ else }}
+        <div class="license-status inactive">● {{ .license.State }}</div>
+      {{ end }}
+
+      {{ if .license_error }}
+        <div class="license-error">{{ .license_error }}</div>
+      {{ else if .license.Message }}
+        {{ if not .license.Active }}<div class="license-error">{{ .license.Message }}</div>{{ end }}
+      {{ end }}
+
+      <div class="license-info">
+        <div class="license-label">Status</div><div class="license-value">{{ .license.State }}</div>
+        {{ if .license.KeyMasked }}<div class="license-label">License</div><div class="license-value">{{ .license.KeyMasked }}</div>{{ end }}
+        <div class="license-label">Device</div><div class="license-value">{{ .license.DeviceShort }}</div>
+        {{ if .license.ActivatedAt }}<div class="license-label">Activated</div><div class="license-value js-time" data-ts="{{ .license.ActivatedAt }}">{{ .license.ActivatedAt }}</div>{{ end }}
+        {{ if .license.StartsAt }}<div class="license-label">Starts</div><div class="license-value js-time" data-ts="{{ .license.StartsAt }}">{{ .license.StartsAt }}</div>{{ end }}
+        {{ if .license.ExpiresAt }}<div class="license-label">Expires</div><div class="license-value js-time" data-ts="{{ .license.ExpiresAt }}">{{ .license.ExpiresAt }}</div>{{ end }}
+        {{ if .license.Active }}<div class="license-label">Remaining</div><div class="license-value">{{ .license.DaysLeft }} day(s)</div>{{ end }}
+        {{ if .license.LastVerified }}<div class="license-label">Last Check</div><div class="license-value js-time" data-ts="{{ .license.LastVerified }}">{{ .license.LastVerified }}</div>{{ end }}
+      </div>
+
+      {{ if .license.Active }}
+        <div class="license-actions">
+          <form action="{{ .base_path }}license/refresh" method="post"><button class="license-btn" type="submit" style="width:100%">Check Again</button></form>
+          <a href="{{ .base_path }}" class="license-btn primary" style="display:flex;align-items:center;justify-content:center;text-decoration:none">Continue</a>
+        </div>
+      {{ else }}
+        <form action="{{ .base_path }}license/activate" method="post" autocomplete="off">
+          <input class="license-input" name="license_key" type="text" maxlength="80" placeholder="4XUI-XXXX-XXXX-XXXX-XXXX" required>
+          <div class="license-actions {{ if not .license.Configured }}single{{ end }}">
+            <button class="license-btn primary" type="submit">Activate License</button>
+            {{ if .license.Configured }}
+              <button class="license-btn" type="submit" formaction="{{ .base_path }}license/refresh" formmethod="post" formnovalidate>Check Stored License</button>
+            {{ end }}
+          </div>
+        </form>
+      {{ end }}
+      <div class="license-note">1 license is bound to 1 VPS. Renewal keeps the same license and device binding.</div>
+    </div>
+  </div>
+</div>
+<script>
+  document.querySelectorAll('.js-time').forEach(function(el) {
+    const ts = Number(el.dataset.ts || 0);
+    if (ts > 0) el.textContent = new Date(ts * 1000).toLocaleString('en-US');
+  });
+</script>
+{{ template "page/body_end" .}}
